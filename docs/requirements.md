@@ -8,7 +8,7 @@
 | Java/Kotlin, Maven/Gradle/Bazel, стабильные версии | Java 21, Maven Wrapper, фиксированные релизные версии в `pom.xml` |
 | Конвенции языка, SOLID/DRY/KISS | Разделение controller/service/repository/model/dto; constructor injection; форматирование google-java-format; общие pagination/error helpers |
 | Feature branching, Conventional Commits | Локальная feature-ветка, история Git; процесс продолжения описан в README |
-| Модульные и интеграционные тесты, JUnit Jupiter, Testcontainers | `PaginationTest`, `BusinessRulesTest`, `ShelterApiIT`; настоящая PostgreSQL в контейнере |
+| Модульные и интеграционные тесты, JUnit Jupiter, Testcontainers | `unit/*Test`, `integration/*IT`; настоящая PostgreSQL в контейнере |
 | Общее покрытие минимум 70% | JaCoCo LINE COVEREDRATIO >= 0.70 на `mvn verify`, без исключений классов из метрики |
 | Осмысленный CRUD основных сущностей | REST-контроллеры всех семи сущностей; изменение заявки/участия через допустимые бизнес-действия |
 | Правильные HTTP-статусы | 200/201/204/400/404/409, Location при создании; восстановление участия — 200 |

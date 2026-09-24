@@ -1,4 +1,4 @@
-package ru.lab.shelter;
+package ru.lab.shelter.unit;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
