@@ -10,36 +10,36 @@ import ru.lab.shelter.model.Role;
 class CatalogApiIT extends IntegrationTestSupport {
   @org.junit.jupiter.api.Test
   void catalogCrudAndRelationshipConstraints() throws Exception {
-    call("PUT", "/api/shelters/" + shelter, new ShelterInput("Новый дом", "Адрес 2"), 200);
-    assertThat(call("GET", "/api/shelters/" + shelter, null, 200).get("name").asText())
+    call(PUT, shelterPath(shelter), new ShelterInput("Новый дом", "Адрес 2"), HTTP_OK);
+    assertThat(call(GET, shelterPath(shelter), null, HTTP_OK).get("name").asText())
         .isEqualTo("Новый дом");
-    call("GET", "/api/shelters", null, 200);
+    call(GET, API_SHELTERS, null, HTTP_OK);
     long employee =
         create(
-            "/api/users",
+            API_USERS,
             new UserInput("Сотрудник", "EMPLOYEE@example.org", Role.EMPLOYEE, shelter));
-    assertThat(call("GET", "/api/users/" + employee, null, 200).get("email").asText())
+    assertThat(call(GET, userPath(employee), null, HTTP_OK).get("email").asText())
         .isEqualTo("employee@example.org");
     call(
-        "PUT",
-        "/api/users/" + employee,
+        PUT,
+        userPath(employee),
         new UserUpdate("Имя", "renamed@example.org", shelter),
-        200);
-    call("GET", "/api/users", null, 200);
+        HTTP_OK);
+    call(GET, API_USERS, null, HTTP_OK);
     call(
-        "POST",
-        "/api/users",
+        POST,
+        API_USERS,
         new UserInput("Без приюта", "bad@example.org", Role.EMPLOYEE, null),
-        400);
-    call("PUT", "/api/users/" + employee, new UserUpdate("Имя", "renamed@example.org", null), 400);
+        HTTP_BAD_REQUEST);
+    call(PUT, userPath(employee), new UserUpdate("Имя", "renamed@example.org", null), HTTP_BAD_REQUEST);
     call(
-        "POST",
-        "/api/users",
+        POST,
+        API_USERS,
         new UserInput("Повтор", "RENAMED@example.org", Role.APPLICANT, null),
-        409);
-    call("DELETE", "/api/shelters/" + shelter, null, 409);
-    call("DELETE", "/api/users/" + employee, null, 204);
-    call("DELETE", "/api/shelters/" + shelter, null, 204);
-    call("GET", "/api/shelters/" + shelter, null, 404);
+        HTTP_CONFLICT);
+    call(DELETE, shelterPath(shelter), null, HTTP_CONFLICT);
+    call(DELETE, userPath(employee), null, HTTP_NO_CONTENT);
+    call(DELETE, shelterPath(shelter), null, HTTP_NO_CONTENT);
+    call(GET, shelterPath(shelter), null, HTTP_NOT_FOUND);
   }
 }

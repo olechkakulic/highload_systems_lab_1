@@ -18,73 +18,82 @@ class PaginationValidationApiIT extends IntegrationTestSupport {
   @org.junit.jupiter.api.Test
   void paginationCapsEveryListAndSliceHasNoTotal() throws Exception {
     for (int i = 0; i < 52; i++) jdbc.update("insert into tags(name) values (?)", "tag-" + i);
-    request("GET", "/api/tags?size=50", null)
+    request(GET, API_TAGS + "?size=50", null)
         .andExpect(status().isOk())
         .andExpect(header().string("X-Total-Count", "52"))
         .andExpect(jsonPath("$.items.length()").value(50))
         .andExpect(jsonPath("$.hasNext").value(true));
-    request("GET", "/api/tags?page=1&size=50", null)
+    request(GET, API_TAGS + "?page=1&size=50", null)
         .andExpect(jsonPath("$.items.length()").value(2));
     long shift = shift(1);
     shift(1);
-    request("GET", "/api/shifts?shelterId=" + shelter + "&status=SCHEDULED&size=1", null)
+    request(GET, API_SHIFTS + "?shelterId=" + shelter + "&status=SCHEDULED&size=1", null)
         .andExpect(status().isOk())
         .andExpect(header().doesNotExist("X-Total-Count"))
         .andExpect(jsonPath("$.hasNext").value(true))
         .andExpect(jsonPath("$.totalElements").doesNotExist());
-    request("GET", "/api/shifts?size=1&page=1", null).andExpect(jsonPath("$.hasNext").value(false));
+    request(GET, API_SHIFTS + "?size=1&page=1", null).andExpect(jsonPath("$.hasNext").value(false));
     for (String path :
         List.of(
-            "shelters",
-            "users",
-            "tags",
-            "animals",
-            "applications",
-            "shifts",
-            "shifts/" + shift + "/participations")) {
-      call("GET", "/api/" + path + "?size=51", null, 400);
-      call("GET", "/api/" + path + "?page=-1", null, 400);
+            API_SHELTERS,
+            API_USERS,
+            API_TAGS,
+            API_ANIMALS,
+            API_APPLICATIONS,
+            API_SHIFTS,
+            participationsPath(shift))) {
+      call(GET, path + "?size=51", null, HTTP_BAD_REQUEST);
+      call(GET, path + "?page=-1", null, HTTP_BAD_REQUEST);
     }
   }
 
   @org.junit.jupiter.api.Test
   void validationErrorsAndOpenApi() throws Exception {
-    request("POST", "/api/shelters", new ShelterInput("", ""))
+    request(POST, API_SHELTERS, new ShelterInput("", ""))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.errors.name").exists());
-    call("POST", "/api/users", new UserInput("Имя", "not-an-email", Role.APPLICANT, null), 400);
     call(
-        "POST",
-        "/api/animals",
+        POST,
+        API_USERS,
+        new UserInput("Имя", "not-an-email", Role.APPLICANT, null),
+        HTTP_BAD_REQUEST);
+    call(
+        POST,
+        API_ANIMALS,
         new AnimalInput(
             "Имя", Species.CAT, LocalDate.now().plusDays(1), "Описание", shelter, Set.of()),
-        400);
+        HTTP_BAD_REQUEST);
     call(
-        "POST",
-        "/api/shifts",
+        POST,
+        API_SHIFTS,
         new ShiftInput(
             shelter, "Смена", Instant.now().plusSeconds(100), Instant.now().plusSeconds(50), 1),
-        400);
-    call("POST", "/api/shifts", shiftInput(0), 400);
-    mvc.perform(post("/api/animals").contentType("application/json").content("{broken"))
+        HTTP_BAD_REQUEST);
+    call(POST, API_SHIFTS, shiftInput(0), HTTP_BAD_REQUEST);
+    mvc.perform(post(API_ANIMALS).contentType("application/json").content("{broken"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.detail").exists());
-    call("POST", "/api/shelters", Map.of("name", "Дом", "address", "Адрес", "unknown", "no"), 400);
-    call("GET", "/api/animals?species=INVALID", null, 400);
-    call("GET", "/api/animals/not-a-number", null, 400);
-    call("GET", "/api/missing", null, 404);
-    for (String path : List.of("users", "tags", "shelters", "animals", "applications", "shifts"))
-      call("GET", "/api/" + path + "/99999", null, 404);
-    call("POST", "/api/applications/99999/withdraw", null, 404);
-    call("POST", "/api/shifts/99999/participations", new ParticipationInput(1L), 404);
+    call(
+        POST,
+        API_SHELTERS,
+        Map.of("name", "Дом", "address", "Адрес", "unknown", "no"),
+        HTTP_BAD_REQUEST);
+    call(GET, API_ANIMALS + "?species=INVALID", null, HTTP_BAD_REQUEST);
+    call(GET, API_ANIMALS + "/not-a-number", null, HTTP_BAD_REQUEST);
+    call(GET, API_MISSING, null, HTTP_NOT_FOUND);
+    for (String path :
+        List.of(API_USERS, API_TAGS, API_SHELTERS, API_ANIMALS, API_APPLICATIONS, API_SHIFTS))
+      call(GET, path + "/99999", null, HTTP_NOT_FOUND);
+    call(POST, applicationWithdrawPath(99999L), null, HTTP_NOT_FOUND);
+    call(POST, participationsPath(99999L), new ParticipationInput(1L), HTTP_NOT_FOUND);
     long shift = shift(1);
-    call("GET", "/api/shifts/" + shift + "/participations/99999", null, 404);
-    request("GET", "/v3/api-docs", null)
+    call(GET, participationPath(shift, 99999L), null, HTTP_NOT_FOUND);
+    request(GET, API_OPENAPI, null)
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.openapi").exists())
-        .andExpect(jsonPath("$.paths['/api/animals']").exists());
-    request("GET", "/swagger-ui/index.html", null).andExpect(status().isOk());
-    request("GET", "/actuator/health", null)
+        .andExpect(jsonPath("$.paths['" + API_ANIMALS + "']").exists());
+    request(GET, API_SWAGGER, null).andExpect(status().isOk());
+    request(GET, API_HEALTH, null)
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("UP"));
   }

@@ -9,37 +9,37 @@ import ru.lab.shelter.dto.tag.TagInput;
 class AnimalApiIT extends IntegrationTestSupport {
   @org.junit.jupiter.api.Test
   void animalsAndTagsCrudFilteringAndStringEnums() throws Exception {
-    long tag = create("/api/tags", new TagInput("Спокойный"));
-    call("GET", "/api/tags/" + tag, null, 200);
-    call("GET", "/api/tags", null, 200);
-    call("PUT", "/api/tags/" + tag, new TagInput("Ласковый"), 200);
-    call("POST", "/api/tags", new TagInput("ЛАСКОВЫЙ"), 409);
-    long animal = create("/api/animals", animalInput("Мурка", Set.of(tag)));
-    var view = call("GET", "/api/animals/" + animal, null, 200);
+    long tag = create(API_TAGS, new TagInput("Спокойный"));
+    call(GET, tagPath(tag), null, HTTP_OK);
+    call(GET, API_TAGS, null, HTTP_OK);
+    call(PUT, tagPath(tag), new TagInput("Ласковый"), HTTP_OK);
+    call(POST, API_TAGS, new TagInput("ЛАСКОВЫЙ"), HTTP_CONFLICT);
+    long animal = create(API_ANIMALS, animalInput("Мурка", Set.of(tag)));
+    var view = call(GET, animalPath(animal), null, HTTP_OK);
     assertThat(view.get("tags").get(0).get("id").asLong()).isEqualTo(tag);
     assertThat(jdbc.queryForObject("select species from animals where id=?", String.class, animal))
         .isEqualTo("CAT");
     request(
-            "GET",
-            "/api/animals?shelterId=" + shelter + "&species=CAT&status=AVAILABLE&tagId=" + tag,
+            GET,
+            API_ANIMALS + "?shelterId=" + shelter + "&species=CAT&status=AVAILABLE&tagId=" + tag,
             null)
         .andExpect(status().isOk())
         .andExpect(header().string("X-Total-Count", "1"))
         .andExpect(jsonPath("$.items.length()").value(1));
-    request("GET", "/api/animals?species=DOG", null)
+    request(GET, API_ANIMALS + "?species=DOG", null)
         .andExpect(header().string("X-Total-Count", "0"));
-    call("PUT", "/api/animals/" + animal, animalInput("Новое имя", Set.of()), 200);
-    call("POST", "/api/animals", animalInput("Нет тега", Set.of(999L)), 400);
-    call("DELETE", "/api/tags/" + tag, null, 204);
-    call("DELETE", "/api/animals/" + animal, null, 204);
-    call("GET", "/api/animals/" + animal, null, 404);
+    call(PUT, animalPath(animal), animalInput("Новое имя", Set.of()), HTTP_OK);
+    call(POST, API_ANIMALS, animalInput("Нет тега", Set.of(999L)), HTTP_BAD_REQUEST);
+    call(DELETE, tagPath(tag), null, HTTP_NO_CONTENT);
+    call(DELETE, animalPath(animal), null, HTTP_NO_CONTENT);
+    call(GET, animalPath(animal), null, HTTP_NOT_FOUND);
   }
 
   @org.junit.jupiter.api.Test
   void deletingTagUnlinksManyToManyWithoutDeletingAnimal() throws Exception {
-    long tag = create("/api/tags", new TagInput("Тег"));
-    long animal = create("/api/animals", animalInput("Пёс", Set.of(tag)));
-    call("DELETE", "/api/tags/" + tag, null, 204);
-    assertThat(call("GET", "/api/animals/" + animal, null, 200).get("tags")).isEmpty();
+    long tag = create(API_TAGS, new TagInput("Тег"));
+    long animal = create(API_ANIMALS, animalInput("Пёс", Set.of(tag)));
+    call(DELETE, tagPath(tag), null, HTTP_NO_CONTENT);
+    assertThat(call(GET, animalPath(animal), null, HTTP_OK).get("tags")).isEmpty();
   }
 }

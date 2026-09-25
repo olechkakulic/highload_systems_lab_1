@@ -17,51 +17,55 @@ class AdoptionApiIT extends IntegrationTestSupport {
         u1 = user("first@example.org", Role.APPLICANT),
         u2 = user("second@example.org", Role.APPLICANT);
     long a1 = application(animal, u1), a2 = application(animal, u2);
-    call("POST", "/api/applications", new ApplicationInput(animal, u1, "Повтор"), 409);
-    call("PUT", "/api/applications/" + a1, new ApplicationUpdate("Дополнение"), 200);
-    call("POST", "/api/applications/" + a1 + "/complete", null, 409);
-    call("DELETE", "/api/applications/" + a1, null, 409);
+    call(POST, API_APPLICATIONS, new ApplicationInput(animal, u1, "Повтор"), HTTP_CONFLICT);
+    call(PUT, applicationPath(a1), new ApplicationUpdate("Дополнение"), HTTP_OK);
+    call(POST, applicationCompletePath(a1), null, HTTP_CONFLICT);
+    call(DELETE, applicationPath(a1), null, HTTP_CONFLICT);
     approve(a1);
     call(
-        "POST",
-        "/api/applications/" + a2 + "/review",
+        POST,
+        applicationReviewPath(a2),
         new ReviewInput(ReviewDecision.APPROVE),
-        409);
+        HTTP_CONFLICT);
     call(
-        "POST",
-        "/api/applications/" + a1 + "/review",
+        POST,
+        applicationReviewPath(a1),
         new ReviewInput(ReviewDecision.APPROVE),
-        409);
-    call("PUT", "/api/applications/" + a1, new ApplicationUpdate("Поздно"), 409);
-    call("POST", "/api/applications/" + a1 + "/complete", null, 200);
-    assertThat(call("GET", "/api/animals/" + animal, null, 200).get("status").asText())
+        HTTP_CONFLICT);
+    call(PUT, applicationPath(a1), new ApplicationUpdate("Поздно"), HTTP_CONFLICT);
+    call(POST, applicationCompletePath(a1), null, HTTP_OK);
+    assertThat(call(GET, animalPath(animal), null, HTTP_OK).get("status").asText())
         .isEqualTo("ADOPTED");
-    assertThat(call("GET", "/api/applications/" + a1, null, 200).get("status").asText())
+    assertThat(call(GET, applicationPath(a1), null, HTTP_OK).get("status").asText())
         .isEqualTo("COMPLETED");
-    assertThat(call("GET", "/api/applications/" + a2, null, 200).get("status").asText())
+    assertThat(call(GET, applicationPath(a2), null, HTTP_OK).get("status").asText())
         .isEqualTo("REJECTED");
-    request("GET", "/api/applications?animalId=" + animal + "&applicantId=" + u1, null)
+    request(GET, API_APPLICATIONS + "?animalId=" + animal + "&applicantId=" + u1, null)
         .andExpect(header().string("X-Total-Count", "1"));
-    call("POST", "/api/applications/" + a1 + "/complete", null, 409);
-    call("POST", "/api/applications", new ApplicationInput(animal, u2, "Поздно"), 409);
-    call("POST", "/api/applications/" + a1 + "/withdraw", null, 409);
-    call("PUT", "/api/animals/" + animal, animalInput("Поздно", Set.of()), 409);
-    call("DELETE", "/api/animals/" + animal, null, 409);
-    call("DELETE", "/api/applications/" + a1, null, 409);
+    call(POST, applicationCompletePath(a1), null, HTTP_CONFLICT);
+    call(POST, API_APPLICATIONS, new ApplicationInput(animal, u2, "Поздно"), HTTP_CONFLICT);
+    call(POST, applicationWithdrawPath(a1), null, HTTP_CONFLICT);
+    call(PUT, animalPath(animal), animalInput("Поздно", Set.of()), HTTP_CONFLICT);
+    call(DELETE, animalPath(animal), null, HTTP_CONFLICT);
+    call(DELETE, applicationPath(a1), null, HTTP_CONFLICT);
   }
 
   @org.junit.jupiter.api.Test
   void applicationRejectionWithdrawalAndDeletion() throws Exception {
     long animal = animal(), user = user("owner@example.org", Role.APPLICANT);
     long a = application(animal, user);
-    call("POST", "/api/applications/" + a + "/review", new ReviewInput(ReviewDecision.REJECT), 200);
-    call("POST", "/api/applications/" + a + "/review", new ReviewInput(ReviewDecision.REJECT), 409);
-    call("DELETE", "/api/applications/" + a, null, 204);
+    call(POST, applicationReviewPath(a), new ReviewInput(ReviewDecision.REJECT), HTTP_OK);
+    call(POST, applicationReviewPath(a), new ReviewInput(ReviewDecision.REJECT), HTTP_CONFLICT);
+    call(DELETE, applicationPath(a), null, HTTP_NO_CONTENT);
     a = application(animal, user);
-    call("POST", "/api/applications/" + a + "/withdraw", null, 200);
-    call("DELETE", "/api/applications/" + a, null, 204);
-    call("GET", "/api/applications/" + a, null, 404);
+    call(POST, applicationWithdrawPath(a), null, HTTP_OK);
+    call(DELETE, applicationPath(a), null, HTTP_NO_CONTENT);
+    call(GET, applicationPath(a), null, HTTP_NOT_FOUND);
     long volunteer = user("volunteer@example.org", Role.VOLUNTEER);
-    call("POST", "/api/applications", new ApplicationInput(animal, volunteer, "Не заявитель"), 409);
+    call(
+        POST,
+        API_APPLICATIONS,
+        new ApplicationInput(animal, volunteer, "Не заявитель"),
+        HTTP_CONFLICT);
   }
 }

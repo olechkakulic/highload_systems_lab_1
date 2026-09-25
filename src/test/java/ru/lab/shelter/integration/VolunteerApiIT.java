@@ -12,37 +12,37 @@ class VolunteerApiIT extends IntegrationTestSupport {
     long shift = shift(2),
         u1 = user("v1@example.org", Role.VOLUNTEER),
         u2 = user("v2@example.org", Role.VOLUNTEER);
-    call("GET", "/api/shifts/" + shift, null, 200);
-    call("PUT", "/api/shifts/" + shift, shiftInput(2), 200);
-    long p1 = create("/api/shifts/" + shift + "/participations", new ParticipationInput(u1));
-    long p2 = create("/api/shifts/" + shift + "/participations", new ParticipationInput(u2));
-    call("PUT", "/api/shifts/" + shift, shiftInput(1), 409);
-    call("POST", "/api/shifts/" + shift + "/participations", new ParticipationInput(u1), 409);
+    call(GET, shiftPath(shift), null, HTTP_OK);
+    call(PUT, shiftPath(shift), shiftInput(2), HTTP_OK);
+    long p1 = create(participationsPath(shift), new ParticipationInput(u1));
+    long p2 = create(participationsPath(shift), new ParticipationInput(u2));
+    call(PUT, shiftPath(shift), shiftInput(1), HTTP_CONFLICT);
+    call(POST, participationsPath(shift), new ParticipationInput(u1), HTTP_CONFLICT);
     long u3 = user("v3@example.org", Role.VOLUNTEER);
-    call("POST", "/api/shifts/" + shift + "/participations", new ParticipationInput(u3), 409);
+    call(POST, participationsPath(shift), new ParticipationInput(u3), HTTP_CONFLICT);
     long applicant = user("applicant@example.org", Role.APPLICANT);
     call(
-        "POST", "/api/shifts/" + shift + "/participations", new ParticipationInput(applicant), 409);
-    call("GET", "/api/shifts/" + shift + "/participations/" + p1, null, 200);
-    request("GET", "/api/shifts/" + shift + "/participations", null)
+        POST, participationsPath(shift), new ParticipationInput(applicant), HTTP_CONFLICT);
+    call(GET, participationPath(shift, p1), null, HTTP_OK);
+    request(GET, participationsPath(shift), null)
         .andExpect(header().string("X-Total-Count", "2"));
-    call("DELETE", "/api/shifts/" + shift + "/participations/" + p1, null, 409);
-    call("DELETE", "/api/shifts/" + shift, null, 409);
-    call("POST", "/api/shifts/" + shift + "/participations/" + p1 + "/cancel", null, 200);
-    call("POST", "/api/shifts/" + shift + "/participations/" + p1 + "/cancel", null, 409);
+    call(DELETE, participationPath(shift, p1), null, HTTP_CONFLICT);
+    call(DELETE, shiftPath(shift), null, HTTP_CONFLICT);
+    call(POST, participationCancelPath(shift, p1), null, HTTP_OK);
+    call(POST, participationCancelPath(shift, p1), null, HTTP_CONFLICT);
     var restored =
-        call("POST", "/api/shifts/" + shift + "/participations", new ParticipationInput(u1), 200);
+        call(POST, participationsPath(shift), new ParticipationInput(u1), HTTP_OK);
     assertThat(restored.get("id").asLong()).isEqualTo(p1);
-    call("POST", "/api/shifts/" + shift + "/cancel", null, 200);
+    call(POST, shiftCancelPath(shift), null, HTTP_OK);
     assertThat(
-            call("GET", "/api/shifts/" + shift + "/participations/" + p2, null, 200)
+            call(GET, participationPath(shift, p2), null, HTTP_OK)
                 .get("status")
                 .asText())
         .isEqualTo("CANCELLED");
-    call("POST", "/api/shifts/" + shift + "/participations", new ParticipationInput(u3), 409);
-    call("DELETE", "/api/shifts/" + shift + "/participations/" + p1, null, 204);
-    call("DELETE", "/api/shifts/" + shift + "/participations/" + p2, null, 204);
-    call("DELETE", "/api/shifts/" + shift, null, 204);
-    call("GET", "/api/shifts/" + shift, null, 404);
+    call(POST, participationsPath(shift), new ParticipationInput(u3), HTTP_CONFLICT);
+    call(DELETE, participationPath(shift, p1), null, HTTP_NO_CONTENT);
+    call(DELETE, participationPath(shift, p2), null, HTTP_NO_CONTENT);
+    call(DELETE, shiftPath(shift), null, HTTP_NO_CONTENT);
+    call(GET, shiftPath(shift), null, HTTP_NOT_FOUND);
   }
 }

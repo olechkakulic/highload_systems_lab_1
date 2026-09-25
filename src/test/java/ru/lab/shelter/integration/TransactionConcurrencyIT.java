@@ -54,7 +54,7 @@ class TransactionConcurrencyIT extends IntegrationTestSupport {
                     operation.call();
                     return "OK";
                   } catch (ApiException e) {
-                    if (e.getStatus().value() != 409) throw e;
+                    if (e.getStatus().value() != HTTP_CONFLICT) throw e;
                     return "CONFLICT";
                   }
                 }));
@@ -96,6 +96,6 @@ class TransactionConcurrencyIT extends IntegrationTestSupport {
             jdbc.queryForObject(
                 "select status from adoption_applications where id=?", String.class, other))
         .isEqualTo("PENDING");
-    call("POST", "/api/applications/" + selected + "/complete", null, 200);
+    call(POST, applicationCompletePath(selected), null, HTTP_OK);
   }
 }
